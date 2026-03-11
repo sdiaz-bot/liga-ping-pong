@@ -12,7 +12,11 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Prisma needs DATABASE_URL at build time for generate
+ENV DATABASE_URL="file:./build.db"
 RUN npx prisma generate
+RUN npx prisma migrate deploy
 RUN npm run build
 
 # Production runner
@@ -25,7 +29,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Copy public assets
 COPY --from=builder /app/public ./public
+
+# Copy prisma schema and migrations for runtime migrate
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
@@ -37,6 +44,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 # Create data directory for SQLite
 RUN mkdir -p /data && chown nextjs:nodejs /data
+RUN mkdir -p /tmp && chown nextjs:nodejs /tmp
 
 USER nextjs
 
@@ -44,7 +52,7 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-ENV DATABASE_URL="file:/data/league.db"
+ENV DATABASE_URL="file:/tmp/league.db"
 
-# Run migrations and start
-CMD npx prisma migrate deploy && node server.js
+# Run migrations then start server
+CMD node_modules/.bin/prisma migrate deploy && node server.js
