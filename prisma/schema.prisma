@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String @id @default(cuid())
+  username     String @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Player {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  department   String
+  skillLevel   String   @default("intermedio")
+  accessCode   String   @unique
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+  registeredAt DateTime @default(now())
+  seasonId     String?
+  season       Season?  @relation(fields: [seasonId], references: [id])
+  matchesAsP1  Match[]  @relation("Player1Matches")
+  matchesAsP2  Match[]  @relation("Player2Matches")
+  wonMatches   Match[]  @relation("WinnerMatches")
+}
+
+model Season {
+  id        String   @id @default(cuid())
+  name      String
+  startDate DateTime?
+  endDate   DateTime?
+  status    String   @default("registration") // registration, round_robin, playoffs, completed
+  playoffSize Int    @default(8) // 8 or 16
+  createdAt DateTime @default(now())
+  players   Player[]
+  matches   Match[]
+  timeSlots TimeSlot[]
+}
+
+model Match {
+  id          String   @id @default(cuid())
+  seasonId    String
+  season      Season   @relation(fields: [seasonId], references: [id])
+  player1Id   String
+  player1     Player   @relation("Player1Matches", fields: [player1Id], references: [id])
+  player2Id   String
+  player2     Player   @relation("Player2Matches", fields: [player2Id], references: [id])
+  scheduledAt DateTime?
+  status      String   @default("scheduled") // scheduled, completed, forfeited
+  phase       String   @default("round_robin") // round_robin, octavos, cuartos, semis, final, tercer_puesto
+  bracketPosition Int? // Position in playoff bracket for ordering
+  winnerId    String?
+  winner      Player?  @relation("WinnerMatches", fields: [winnerId], references: [id])
+  sets        Set[]
+  createdAt   DateTime @default(now())
+}
+
+model Set {
+  id           String @id @default(cuid())
+  matchId      String
+  match        Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  setNumber    Int
+  player1Score Int
+  player2Score Int
+}
+
+model TimeSlot {
+  id        String  @id @default(cuid())
+  seasonId  String
+  season    Season  @relation(fields: [seasonId], references: [id])
+  dayOfWeek Int     // 0=Sunday, 1=Monday, ..., 6=Saturday
+  startTime String  // "12:00"
+  endTime   String  // "12:30"
+  isActive  Boolean @default(true)
+}
