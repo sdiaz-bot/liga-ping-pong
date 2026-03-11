@@ -54,5 +54,8 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 ENV DATABASE_URL="file:/tmp/league.db"
 
-# Run migrations then start server
-CMD node_modules/.bin/prisma migrate deploy && node server.js
+# Copy build-time db as initial state (has schema applied)
+COPY --from=builder --chown=nextjs:nodejs /app/prisma/build.db /app/prisma/initial.db
+
+# Start server with migration attempt
+CMD sh -c 'if [ ! -f /tmp/league.db ]; then cp /app/prisma/initial.db /tmp/league.db; fi && node_modules/.bin/prisma migrate deploy 2>/dev/null; node server.js'
