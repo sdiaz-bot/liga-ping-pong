@@ -52,10 +52,10 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-ENV DATABASE_URL="file:/tmp/league.db"
+ENV DATABASE_URL="file:/data/league.db"
 
 # Copy build-time db as initial state (has schema applied)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma/build.db /app/prisma/initial.db
 
 # Start server with migration attempt
-CMD sh -c 'if [ ! -f /tmp/league.db ]; then cp /app/prisma/initial.db /tmp/league.db; fi && node_modules/.bin/prisma migrate deploy 2>/dev/null; node server.js'
+CMD sh -c 'DB_PATH=$(echo $DATABASE_URL | sed "s|file:||"); if [ ! -f "$DB_PATH" ]; then cp /app/prisma/initial.db "$DB_PATH"; fi && node_modules/.bin/prisma migrate deploy 2>/dev/null; node server.js'
