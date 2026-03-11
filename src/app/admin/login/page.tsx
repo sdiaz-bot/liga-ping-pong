@@ -26,7 +26,7 @@ export default function AdminLoginPage() {
       setError("Credenciales incorrectas");
       setLoading(false);
     } else {
-      router.push("/admin");
+      window.location.href = "/admin";
     }
   }
 
