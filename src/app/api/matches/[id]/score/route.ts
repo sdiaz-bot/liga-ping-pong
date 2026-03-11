@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getNextPhase, getNextBracketPosition } from "@/lib/bracket-generator";
 
 export async function POST(
   req: NextRequest,
@@ -107,6 +108,38 @@ export async function POST(
         where: { id },
         data: { status: "completed", winnerId },
       });
+
+      // Advance bracket winner to next round (playoffs only)
+      if (isPlayoff && match.bracketPosition !== null) {
+        const nextPhase = getNextPhase(match.phase);
+        if (nextPhase) {
+          const { position: nextPos, slot } = getNextBracketPosition(match.phase, match.bracketPosition);
+          const nextMatch = await tx.match.findFirst({
+            where: { seasonId: match.seasonId, phase: nextPhase, bracketPosition: nextPos },
+          });
+          if (nextMatch) {
+            await tx.match.update({
+              where: { id: nextMatch.id },
+              data: { [slot === "player1" ? "player1Id" : "player2Id"]: winnerId },
+            });
+          }
+        }
+
+        // For semis: advance loser to tercer_puesto
+        if (match.phase === "semis") {
+          const loserId = winnerId === match.player1Id ? match.player2Id : match.player1Id;
+          const tercerPuesto = await tx.match.findFirst({
+            where: { seasonId: match.seasonId, phase: "tercer_puesto" },
+          });
+          if (tercerPuesto && loserId) {
+            const slotField = match.bracketPosition === 1 ? "player1Id" : "player2Id";
+            await tx.match.update({
+              where: { id: tercerPuesto.id },
+              data: { [slotField]: loserId },
+            });
+          }
+        }
+      }
     });
 
     return NextResponse.json({ success: true, winnerId });

@@ -14,6 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <AdminNavLink href="/admin/players">Jugadores</AdminNavLink>
             <AdminNavLink href="/admin/schedule">Calendario</AdminNavLink>
             <AdminNavLink href="/admin/matches">Partidos</AdminNavLink>
+            <AdminNavLink href="/admin/simulate">Simular</AdminNavLink>
           </div>
         </nav>
         <div className="flex-1 min-w-0">{children}</div>
